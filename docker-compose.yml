@@ -70,24 +70,3 @@ services:
     entrypoint: ["node", "dist/index.js"]
     depends_on:
       - openclaw-gateway
-
-  cyan-site:
-    image: nginx:alpine
-    volumes:
-      - /home/cyan/.openclaw/workspace/cyan-fish-site:/usr/share/nginx/html:ro
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-
-  deploy-webhook:
-    build:
-      context: /home/cyan/.openclaw/workspace/deploy-webhook
-    volumes:
-      - /home/cyan/.openclaw/workspace/cyan-fish-site:/repos/cyan-fish-site
-      - /home/cyan/.openclaw/workspace/oracle-page:/repos/oracle-page
-    environment:
-      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
-      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-    ports:
-      - "9000:9000"
-    restart: unless-stopped
