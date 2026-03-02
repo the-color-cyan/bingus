@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { buildConfigSchema } from "./schema.js";
 import { applyDerivedTags, CONFIG_TAGS, deriveTagsForPath } from "./schema.tags.js";
 
 describe("config schema", () => {
+  let baseSchema: ReturnType<typeof buildConfigSchema>;
+
+  beforeAll(() => {
+    baseSchema = buildConfigSchema();
+  });
+
   it("exports schema + hints", () => {
-    const res = buildConfigSchema();
+    const res = baseSchema;
     const schema = res.schema as { properties?: Record<string, unknown> };
     expect(schema.properties?.gateway).toBeTruthy();
     expect(schema.properties?.agents).toBeTruthy();
@@ -121,6 +127,31 @@ describe("config schema", () => {
     expect(listHint?.help).toContain("bluebubbles");
   });
 
+  it("caches merged schemas for identical plugin/channel metadata", () => {
+    const params = {
+      plugins: [
+        {
+          id: "voice-call",
+          name: "Voice Call",
+          configSchema: { type: "object", properties: { provider: { type: "string" } } },
+        },
+      ],
+      channels: [
+        {
+          id: "matrix",
+          label: "Matrix",
+          configSchema: { type: "object", properties: { accessToken: { type: "string" } } },
+        },
+      ],
+    };
+    const first = buildConfigSchema(params);
+    const second = buildConfigSchema({
+      plugins: [{ ...params.plugins[0] }],
+      channels: [{ ...params.channels[0] }],
+    });
+    expect(second).toBe(first);
+  });
+
   it("derives security/auth tags for credential paths", () => {
     const tags = deriveTagsForPath("gateway.auth.token");
     expect(tags).toContain("security");
@@ -148,7 +179,7 @@ describe("config schema", () => {
   });
 
   it("covers core/built-in config paths with tags", () => {
-    const schema = buildConfigSchema();
+    const schema = baseSchema;
     const allowed = new Set<string>(CONFIG_TAGS);
     for (const [key, hint] of Object.entries(schema.uiHints)) {
       if (!key.includes(".")) {
