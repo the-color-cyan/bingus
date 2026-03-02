@@ -42,6 +42,8 @@ RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
       rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     fi
 
+RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
+
 USER node
 COPY --chown=node:node . .
 RUN pnpm build
