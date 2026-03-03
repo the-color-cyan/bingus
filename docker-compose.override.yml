@@ -1,24 +1,19 @@
 services:
   openclaw-gateway:
     command: node dist/index.js gateway --bind lan --port 18789 --allow-unconfigured
-
-  cyan-site:
-    image: nginx:alpine
-    volumes:
-      - /home/cyan/.openclaw/workspace/cyan-fish-site:/usr/share/nginx/html:ro
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-
-  deploy-webhook:
-    build:
-      context: /home/cyan/.openclaw/workspace/deploy-webhook
-    volumes:
-      - /home/cyan/.openclaw/workspace/cyan-fish-site:/repos/cyan-fish-site
-      - /home/cyan/.openclaw/workspace/oracle-page:/repos/oracle-page
+  openclaw-node:
+    image: ${OPENCLAW_IMAGE:-openclaw:local}
+    network_mode: "service:openclaw-gateway"
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
     environment:
-      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
-      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-    ports:
-      - "9000:9000"
+      HOME: /home/node
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+    volumes:
+      - ${OPENCLAW_HOME:-~/.openclaw}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE:-~/.openclaw/workspace}:/home/node/.openclaw/workspace
+    command: node dist/index.js node run --host 127.0.0.1 --port 18789 --display-name bingus-cli-node
     restart: unless-stopped
