@@ -1,6 +1,22 @@
 services:
   openclaw-gateway:
-    command: node dist/index.js gateway --bind lan --port 18789 --allow-unconfigured
+    command: bash /home/node/.openclaw/workspace/.bin/gateway-start.sh
+    restart: unless-stopped
+    group_add:
+      - "990"
+    environment:
+      PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
+      TZ: ${TZ:-America/Chicago}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - default
+      - openclaw-sandbox-browser
+
+  openclaw-cli:
+    environment:
+      TZ: ${TZ:-America/Chicago}
+
   openclaw-node:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     network_mode: "service:openclaw-gateway"
@@ -12,8 +28,30 @@ services:
     environment:
       HOME: /home/node
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      TZ: ${TZ:-America/Chicago}
     volumes:
       - ${OPENCLAW_HOME:-~/.openclaw}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE:-~/.openclaw/workspace}:/home/node/.openclaw/workspace
     command: node dist/index.js node run --host 127.0.0.1 --port 18789 --display-name bingus-cli-node
     restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: bingus-litellm-1
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - /home/cyan/.openclaw/litellm-config.yaml:/app/config.yaml:ro
+    environment:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
+      TZ: ${TZ:-America/Chicago}
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "2"]
+    networks:
+      - default
+
+
+networks:
+  openclaw-sandbox-browser:
+    external: true
